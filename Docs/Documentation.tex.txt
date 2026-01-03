@@ -1,0 +1,155 @@
+\documentclass[a4paper,12pt]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[english]{babel}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{geometry}
+\usepackage{booktabs}
+\usepackage{caption}
+\usepackage{float}
+
+\geometry{margin=1in}
+
+\definecolor{codegreen}{rgb}{0.2,0.6,0.2}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.97,0.97,0.97}
+
+\lstdefinestyle{mystyle}{
+    backgroundcolor=\color{backcolour},   
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{magenta},
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,         
+    breaklines=true,                 
+    captionpos=b,                    
+    keepspaces=true,                 
+    numbers=left,                    
+    numbersep=5pt,                  
+    showspaces=false,                
+    showstringspaces=false,
+    showtabs=false,                  
+    tabsize=4
+}
+\lstset{style=mystyle}
+
+\title{\textbf{PyWaveGuide} \\ \large Technical Reference Manual}
+\author{Avram Alexandru-Valentin}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+This document details the architecture, theoretical foundations, and algorithmic implementation of \textbf{PyWaveGuide}, an open-source Python software suite designed for the simulation and analysis of integrated optical components. The application bridges the gap between analytical approximation methods and rigorous numerical simulations, offering a hybrid approach for rapid photonic prototyping. Key features include a vectorized Finite-Difference Time-Domain (FDTD) engine, dynamic geometry generation for Multimode Interference (MMI) couplers, and a comprehensive material database.
+\end{abstract}
+
+\tableofcontents
+\newpage
+
+\section{System Architecture}
+
+PyWaveGuide adopts a modular architecture that separates the user interface, business logic, and computational kernels. This design ensures maintainability and allows for the independent scaling of the simulation engine.
+
+\subsection{Architectural Components}
+
+\begin{itemize}
+    \item \textbf{GUI Layer (View - \texttt{gui\_app.py}):} 
+    Built on \texttt{Tkinter}, providing a zero-dependency, cross-platform interface. It handles event-driven user interactions and renders real-time schematic previews of optical components using the \texttt{Canvas} API.
+    
+    \item \textbf{Orchestration Layer (Controller - \texttt{optimizer.py}):} 
+    Implements the \textit{Factory Method} pattern to dynamically instantiate component models. It acts as a bridge between the raw physics data and the high-level application logic, formatting results for the comparative datasheets.
+    
+    \item \textbf{Physics Core (Model - \texttt{waveguide\_models.py}):} 
+    Contains the analytical implementations for waveguide modes, bend losses, and interference patterns. It follows an Object-Oriented approach where every component (e.g., \texttt{SBend}, \texttt{YBranch}) inherits from a \texttt{GenericComponent} base class.
+    
+    \item \textbf{Simulation Engine (Kernel - \texttt{fdtd\_sim.py}):} 
+    A standalone high-performance computing module utilizing \texttt{NumPy} for tensor operations. It is decoupled from the GUI, allowing it to potentially run as a background process or on a remote server.
+\end{itemize}
+
+\section{Theoretical Framework}
+
+\subsection{Waveguide Mode Theory}
+The software determines the operational regime (single-mode vs. multi-mode) using the normalized frequency parameter ($V$-number) for step-index waveguides:
+
+\begin{equation}
+    V = \frac{2\pi a}{\lambda} \text{NA} \approx \frac{\pi w}{\lambda} \sqrt{n_{core}^2 - n_{clad}^2}
+\end{equation}
+
+Where $w$ is the waveguide width and $\lambda$ is the vacuum wavelength. The cut-off condition for the fundamental mode is $V < 2.405$.
+
+\subsection{Multimode Interference (MMI)}
+The MMI couplers are designed based on the self-imaging principle. The beat length $L_\pi$, defined as the propagation distance where the fundamental and first-order modes acquire a phase difference of $\pi$, is approximated by:
+
+\begin{equation}
+    L_\pi \approx \frac{4 n_{eff} W_{e}^2}{3 \lambda}
+\end{equation}
+
+For an $N$-port splitter, the optimal device length is derived as $L_{opt} = L_\pi / N$. This analytical model allows for instant dimensioning before numerical verification.
+
+\section{Numerical Implementation (FDTD)}
+
+
+The core simulation engine employs the Finite-Difference Time-Domain (FDTD) method to solve Maxwell's curl equations in a 2D Transverse Magnetic (TM) grid ($E_z, H_x, H_y$).
+
+\subsection{The Yee Algorithm}
+The continuous space-time derivatives are discretized using central differences. The update equations for the TM mode are:
+
+\textbf{Magnetic Field Update ($H$ at $n+1/2$):}
+\begin{align}
+    H_x|^{n+1/2}_{i,j} &= H_x|^{n-1/2}_{i,j} - \frac{\Delta t}{\mu \Delta y} \left( E_z|^n_{i,j+1} - E_z|^n_{i,j} \right) \\
+    H_y|^{n+1/2}_{i,j} &= H_y|^{n-1/2}_{i,j} + \frac{\Delta t}{\mu \Delta x} \left( E_z|^n_{i+1,j} - E_z|^n_{i,j} \right)
+\end{align}
+
+\textbf{Electric Field Update ($E$ at $n+1$):}
+\begin{equation}
+    E_z|^{n+1}_{i,j} = E_z|^n_{i,j} + \frac{\Delta t}{\epsilon_{i,j}} \left( \frac{H_y|^{n+1/2}_{i,j} - H_y|^{n+1/2}_{i-1,j}}{\Delta x} - \frac{H_x|^{n+1/2}_{i,j} - H_x|^{n+1/2}_{i,j-1}}{\Delta y} \right)
+\end{equation}
+
+\subsection{Vectorization & Performance}
+To overcome the interpretation overhead of Python loops, the update equations are fully vectorized using \texttt{NumPy} slicing. This allows the operations to be executed in optimized C-level routines.
+
+\begin{lstlisting}[language=Python, caption=Vectorized FDTD Update Kernel]
+# Efficient grid update without explicit loops
+Hx[:, :-1] -= 0.5 * (Ez[:, 1:] - Ez[:, :-1])
+Hy[:-1, :] += 0.5 * (Ez[1:, :] - Ez[:-1, :])
+Ez[1:, 1:] += C_inv[1:, 1:] * (
+    (Hy[1:, 1:] - Hy[:-1, 1:]) - 
+    (Hx[1:, 1:] - Hx[1:, :-1])
+)
+\end{lstlisting}
+
+\subsection{Procedural Geometry Construction}
+Instead of loading static mesh files, PyWaveGuide generates simulation grids procedurally.
+\begin{itemize}
+    \item \textbf{S-Bends:} Modeled using a cosine function $y(x) \propto (1 - \cos(\pi u))$ to minimize mode mismatch loss (adiabatic transition).
+    \item \textbf{Material Mapping:} The permittivity matrix $\epsilon(x,y)$ is populated dynamically based on the selected material properties ($n_{Si} \approx 3.47$, $n_{SiO2} \approx 1.44$).
+\end{itemize}
+
+\section{Dependencies}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{@{}ll@{}}
+\toprule
+\textbf{Library} & \textbf{Usage Context} \\ \midrule
+\texttt{NumPy} & Matrix manipulation, tensor math, FDTD vectorization. \\
+\texttt{Matplotlib} & Field visualization, animation rendering, spectral plotting. \\
+\texttt{Tkinter} & Graphical User Interface (Standard Python Library). \\ \bottomrule
+\end{tabular}
+\caption{Software Dependencies}
+\end{table}
+
+\section{Conclusion}
+PyWaveGuide successfully demonstrates the integration of analytical engineering models with numerical physics simulations. It serves as a rapid prototyping tool, allowing designers to validate geometric parameters and estimate insertion losses before proceeding to commercial-grade solvers.
+
+\end{document}
