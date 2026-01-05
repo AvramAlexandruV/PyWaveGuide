@@ -17,7 +17,7 @@ It combines two things:
 
 1.  **Clone the repo**
     ```bash
-    git clone [https://github.com/yourusername/PyWaveGuide.git](https://github.com/yourusername/PyWaveGuide.git)
+    git clone https://github.com/AvramAlexandruV/PyWaveGuide
     cd PyWaveGuide
     ```
 
