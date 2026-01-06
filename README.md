@@ -82,6 +82,7 @@ Instead of iterating over grid indices $(i, j)$, the spatial derivatives are cal
 # Vectorized implementation of dHz/dy (example)
 # Shifted array subtraction replaces spatial loops
 Hx[:, :-1] -= 0.5 * (Ez[:, 1:] - Ez[:, :-1])
+```
 
 **Understanding the Data:**
 * **Time Delay:** The gap between the red pulse and the green pulse represents the time of flight—how long it took light to travel through the component.
