@@ -47,6 +47,9 @@ After the simulation concludes, you can analyze the signal data:
 
 The result graphs display **Signal Amplitude vs. Time Steps**.
 
+* **X-Axis (Time Steps):** Represents the discrete time progression of the simulation. One "step" corresponds to a single iteration of the calculation loop ($\Delta t$).
+* **Y-Axis (|Amplitude|):** Represents the absolute magnitude of the electromagnetic field in **Arbitrary Units (a.u.)**. These values are normalized relative to the source injection strength.
+
 * **Red Line (Input Pulse):** Represents the Gaussian pulse injected at the source. This is the reference signal.
 * **Green Line (Output Signal):** Represents the electromagnetic field magnitude measured at the selected detector location.
 
