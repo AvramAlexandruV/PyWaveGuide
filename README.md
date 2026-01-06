@@ -53,6 +53,36 @@ The result graphs display **Signal Amplitude vs. Time Steps**.
 * **Red Line (Input Pulse):** Represents the Gaussian pulse injected at the source. This is the reference signal.
 * **Green Line (Output Signal):** Represents the electromagnetic field magnitude measured at the selected detector location.
 
+## Numerical Implementation (FDTD)
+
+The simulation engine implements the **Finite-Difference Time-Domain (FDTD)** method, solving Maxwell's curl equations on a discrete 2D Yee lattice. This allows for the modeling of complex scattering, interference, and diffraction effects that analytical models cannot capture.
+
+### Governing Equations (TM Mode)
+For the Transverse Magnetic (TM) polarization ($E_z, H_x, H_y$), the time-dependent Maxwell equations used are:
+
+$$\frac{\partial H_x}{\partial t} = -\frac{1}{\mu} \frac{\partial E_z}{\partial y}$$
+
+$$\frac{\partial H_y}{\partial t} = \frac{1}{\mu} \frac{\partial E_z}{\partial x}$$
+
+$$\frac{\partial E_z}{\partial t} = \frac{1}{\epsilon(x,y)} \left( \frac{\partial H_y}{\partial x} - \frac{\partial H_x}{\partial y} \right)$$
+
+### The Yee Algorithm & Discretization
+The continuous derivatives are approximated using central differences in both space and time. The update equations implemented in the code (for $E_z$ at time step $n+1$) typically follow this discrete form:
+
+$$E_z^{n+1}(i,j) = E_z^n(i,j) + \frac{\Delta t}{\epsilon_{i,j}} \left( \frac{H_y^{n+1/2}(i, j) - H_y^{n+1/2}(i-1, j)}{\Delta x} - \frac{H_x^{n+1/2}(i, j) - H_x^{n+1/2}(i, j-1)}{\Delta y} \right)$$
+
+A similar approach is applied inversely for the Transverse Electric (TE) mode ($H_z, E_x, E_y$).
+
+### Algorithmic Optimization (Vectorization)
+A naive implementation of FDTD in Python using nested `for` loops is computationally prohibitive (~1 frame/second). **PyWaveGuide** achieves real-time performance (30+ FPS) by leveraging **NumPy Vectorization**. 
+
+Instead of iterating over grid indices $(i, j)$, the spatial derivatives are calculated using array slicing operations, which delegate the computation to optimized C-level routines:
+
+```python
+# Vectorized implementation of dHz/dy (example)
+# Shifted array subtraction replaces spatial loops
+Hx[:, :-1] -= 0.5 * (Ez[:, 1:] - Ez[:, :-1])
+
 **Understanding the Data:**
 * **Time Delay:** The gap between the red pulse and the green pulse represents the time of flight—how long it took light to travel through the component.
 * **Amplitude Reduction:** If the green peak is lower than the red peak, it indicates loss. This loss comes from material absorption, radiation at bends, or insertion loss (coupling inefficiency).
