@@ -22,7 +22,8 @@ The application includes a comprehensive FDTD engine that simulates light propag
 
 **Simulation Features:**
 * **Polarization Control:** Users can switch between Transverse Magnetic (TM) and Transverse Electric (TE) modes. This alters the Maxwell equations used in the update loop, affecting how the field interacts with boundaries and bends.
-* **2D & 3D Visualization:** * **2D View:** A top-down intensity map showing the wave propagation.
+* **2D & 3D Visualization:**
+    * **2D View:** A top-down intensity map showing the wave propagation.
     * **3D View:** A surface elevation plot representing the field magnitude in real-time.
 * **Interactive Detectors:** Users can place custom measurement points (detectors) anywhere on the simulation grid to analyze the field at specific locations (e.g., measuring leakage or signal measuring at specific output ports).
 
