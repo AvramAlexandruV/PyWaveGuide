@@ -4,7 +4,7 @@
 # Properties:
 # n: Refractive index at 1550nm
 # alpha: Estimated attenuation (dB/cm)
-# min_bend_radius: Minimum bend radius (um) before significant loss
+# min_bend_radius: Minimum bend radius (um) before significant loss occurs
 # cost_base: Fixed startup cost ($)
 # cost_factor: Variable cost per unit ($)
 # min_wl / max_wl: Transparency range (um)

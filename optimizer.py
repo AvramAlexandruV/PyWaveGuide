@@ -3,7 +3,6 @@ import materials
 import waveguide_models as wm
 
 def _create_component(comp_type, mat_name, wl):
-    """ Factory method """
     props = materials.get_properties(mat_name)
     if not props: return None
     
@@ -16,13 +15,11 @@ def _create_component(comp_type, mat_name, wl):
     return None
 
 def run_simulation(params):
-    """ Returns result dictionary for current settings """
     comp = _create_component(params['type'], params['material'], float(params.get('wl', 1.55)))
     if not comp: return {"Error": "Unknown Component"}
     
-    # Call design() with specific params
     if params['type'] == "Straight Guide":
-        return comp.design(float(params['len_cm']), float(params.get('width_um', 2.0)))
+        return comp.design(float(params['len_um']), float(params.get('width_um', 2.0)))
     elif params['type'] == "S-Bend":
         return comp.design(float(params['offset_um']), float(params['len_um']))
     elif params['type'] == "Y-Branch":
@@ -37,23 +34,15 @@ def run_simulation(params):
     return {}
 
 def generate_comparative_datasheet(params):
-    """ 
-    Generates spectral comparison table (Visible Spectrum)
-    Returns: (material_names, data_rows)
-    """
     mat_names = materials.get_material_names()
-    
-    # Visible Range: 380nm - 780nm
     start_wl = 0.38
     end_wl = 0.78
     step = 0.02
-    
     spectral_rows = []
     
     curr_wl = start_wl
     while curr_wl <= end_wl + 0.001:
         row = {"Wavelength (um)": f"{curr_wl:.2f}"}
-        
         for mat in mat_names:
             comp = _create_component(params['type'], mat, curr_wl)
             if comp:
@@ -61,7 +50,6 @@ def generate_comparative_datasheet(params):
                 row[mat] = val
             else:
                 row[mat] = "N/A"
-        
         spectral_rows.append(row)
         curr_wl += step
         

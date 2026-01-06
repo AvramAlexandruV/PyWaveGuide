@@ -31,10 +31,12 @@ class GenericComponent:
 
 # --- 1. STRAIGHT WAVEGUIDE ---
 class StraightWaveguide(GenericComponent):
-    def design(self, length_cm, width_um):
+    def design(self, length_um, width_um):
         if not self.is_transparent(self.wl):
-            return {"Status": "OPAQUE (Absorption)", "Transmittance (%)": 0.0, "Cost ($)": 0}
+            return {"Status": "OPAQUE", "Transmittance (%)": 0.0, "Cost ($)": 0}
 
+        # Convert um to cm for loss calculation
+        length_cm = length_um / 10000.0
         loss_db = self.props["alpha"] * length_cm
         transmittance = 10 ** (-loss_db / 10)
         
@@ -43,18 +45,17 @@ class StraightWaveguide(GenericComponent):
         
         return {
             "Parameter": "Straight Guide",
-            "Loss (dB)": round(loss_db, 3),
+            "Loss (dB)": round(loss_db, 4),
             "Transmittance (%)": round(transmittance * 100, 2),
             "V-number": round(V, 3),
-            "Cut-off Wavelength (um)": round(wl_cutoff, 3),
             "Regime": "Single-mode" if V < 2.405 else "Multi-mode",
             "Cost ($)": self.calculate_cost(length_cm)
         }
 
     def analyze_spectrum(self, fixed_params, test_wl):
         if not self.is_transparent(test_wl): return 0.0
-        L = float(fixed_params['len_cm'])
-        loss = self.props["alpha"] * L
+        L_cm = float(fixed_params['len_um']) / 10000.0
+        loss = self.props["alpha"] * L_cm
         trans = 10 ** (-loss / 10)
         return round(trans * 100, 2)
 
@@ -67,10 +68,9 @@ class SBendWaveguide(GenericComponent):
         else: R_eff = (length_um**2) / (4 * offset_um)
         
         R_critical = self.props["min_bend_radius"]
-        # Simplified bend loss model
         loss_bend_db = 0.5 * ((R_critical / (R_eff + 0.1)) ** 2) if R_eff < R_critical else 0.01
         
-        length_cm = length_um / 10000
+        length_cm = length_um / 10000.0
         loss_prop = self.props["alpha"] * length_cm
         total_loss = loss_bend_db + loss_prop
         trans = 10 ** (-total_loss / 10)
@@ -79,13 +79,12 @@ class SBendWaveguide(GenericComponent):
             "Bend Radius (um)": round(R_eff, 1),
             "Total Loss (dB)": round(total_loss, 3),
             "Transmittance (%)": round(trans * 100, 2),
-            "Cost ($)": self.calculate_cost(length_cm),
             "Status": "OK" if R_eff > R_critical else "CRITICAL RADIUS"
         }
 
     def analyze_spectrum(self, p, wl):
         if not self.is_transparent(wl): return 0.0
-        return 95.0 # Simplified
+        return 95.0
 
 # --- 3. Y-BRANCH ---
 class YBranch(GenericComponent):
@@ -98,8 +97,7 @@ class YBranch(GenericComponent):
         return {
             "Type": "Splitter 1x2",
             "Total Loss (dB)": round(total_loss, 3),
-            "Transmittance/port (%)": round(trans * 100, 2),
-            "Cost ($)": self.calculate_cost(length_um/10000)
+            "Transmittance/port (%)": round(trans * 100, 2)
         }
     
     def analyze_spectrum(self, fixed_params, test_wl):
@@ -120,39 +118,30 @@ class MMI(GenericComponent):
         return {
             "L_beat (um)": round(L_pi, 1),
             "Device Length (um)": round(L_opt, 1),
-            "Transmittance/port (%)": round(trans * 100, 2),
-            "Cost ($)": self.calculate_cost(L_opt/10000)
+            "Transmittance/port (%)": round(trans * 100, 2)
         }
 
     def analyze_spectrum(self, fixed_params, test_wl):
         if not self.is_transparent(test_wl): return 0.0
-        
         W = float(fixed_params['width_um'])
         N = int(fixed_params['ports'])
-        
-        # Design target (fixed physical dimensions)
         L_pi_design = (4 * self.n_eff * (W**2)) / (3 * 1.55)
         L_dev_fixed = (3 * L_pi_design / 8) if N == 2 else (L_pi_design / N)
-        
-        # Physics at new wavelength
         L_pi_new = (4 * self.n_eff * (W**2)) / (3 * test_wl)
         L_opt_new = (3 * L_pi_new / 8) if N == 2 else (L_pi_new / N)
-        
         ratio = L_dev_fixed / L_opt_new
         efficiency = math.sin( (math.pi/2) * ratio ) ** 2
-        
-        trans_total = (1.0 / N) * efficiency
-        return round(trans_total * 100, 2)
+        return round((1.0/N) * efficiency * 100, 2)
 
 # --- 5. MIRROR & 6. GRATING ---
 class Mirror(GenericComponent):
     def design(self, reflectivity):
         R = float(reflectivity)
-        return {"Reflectivity (%)": R*100, "Transmittance (%)": round((1-R)*100, 1), "Cost ($)": 50}
+        return {"Reflectivity (%)": R*100, "Transmittance (%)": round((1-R)*100, 1)}
     def analyze_spectrum(self, p, wl): return 0.0 
 
 class Grating(GenericComponent):
     def design(self, target_wl):
         period = (target_wl) / (2 * self.n_eff)
-        return {"Period (nm)": round(period*1000, 1), "Bragg Wavelength": target_wl, "Cost ($)": 80}
+        return {"Period (nm)": round(period*1000, 1), "Bragg Wavelength": target_wl}
     def analyze_spectrum(self, p, wl): return 0.0
